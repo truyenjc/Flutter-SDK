@@ -1,5 +1,6 @@
 #import "AgoraRtcEnginePlugin.h"
 #import <AgoraRtcEngineKit/AgoraRtcEngineKit.h>
+#import "ExternalAudio.h"
 
 @interface AgoraRendererView ()
 @property(nonatomic, strong) UIView *renderView;
@@ -24,12 +25,16 @@
 @interface AgoraRenderViewFactory : NSObject <FlutterPlatformViewFactory>
 @end
 
-@interface AgoraRtcEnginePlugin () <FlutterStreamHandler, AgoraRtcEngineDelegate>
+@interface AgoraRtcEnginePlugin () <FlutterStreamHandler, AgoraRtcEngineDelegate, ExternalAudioDelegate>
 @property(strong, nonatomic) AgoraRtcEngineKit *agoraRtcEngine;
 @property(strong, nonatomic) FlutterMethodChannel *methodChannel;
 @property(strong, nonatomic) FlutterEventChannel *eventChannel;
 @property(strong, nonatomic) FlutterEventSink eventSink;
 @property(strong, nonatomic) NSMutableDictionary *rendererViews;
+@property (nonatomic, strong) ExternalAudio *exAudio;
+@property (nonatomic, assign) int channels;
+@property (nonatomic, assign) BOOL enableSpeechRecognize;
+@property (nonatomic, assign) BOOL enableExternalAudio;
 @end
 
 @implementation AgoraRtcEnginePlugin
@@ -120,6 +125,15 @@
         NSString *appId = [self stringFromArguments:params key:@"appId"];
         self.agoraRtcEngine = [AgoraRtcEngineKit sharedEngineWithAppId:appId delegate:self];
         [_eventChannel setStreamHandler:self];
+        self.enableExternalAudio = NO;
+        result(nil);
+    } else if ([@"enableExternalAudio" isEqualToString:method]) {
+        self.enableExternalAudio = YES;
+        self.enableSpeechRecognize = NO;
+        self.exAudio = [ExternalAudio sharedExternalAudio];
+        [self.exAudio setupExternalAudioWithAgoraKit:self.agoraRtcEngine sampleRate:48000 channels:1 audioCRMode:AudioCRModeExterCaptureSDKRender IOType:IOUnitTypeRemoteIO];
+        [self.agoraRtcEngine enableExternalAudioSourceWithSampleRate:48000 channelsPerFrame:1];
+        self.exAudio.delegate = self;
         result(nil);
     } else if ([@"destroy" isEqualToString:method]) {
         self.agoraRtcEngine = nil;
@@ -142,6 +156,10 @@
         [self.agoraRtcEngine joinChannelByToken:token channelId:channel info:info uid:uid joinSuccess:nil];
         result([NSNumber numberWithBool:YES]);
     } else if ([@"leaveChannel" isEqualToString:method]) {
+        if (self.enableExternalAudio == YES) {
+            [self.exAudio stopWork];
+            self.enableSpeechRecognize = NO;
+        }
         BOOL success = (0 == [self.agoraRtcEngine leaveChannel:nil]);
         result([NSNumber numberWithBool:success]);
     } else if ([@"switchChannel" isEqualToString:method]) {
@@ -813,6 +831,14 @@
         NSString *args = [self stringFromArguments:params key:@"args"];
         NSString *res = [self.agoraRtcEngine getParameter:paramsStr args:args];
         result(res);
+    } else if ([@"setSpeechApiKey" isEqualToString:method]) {
+        result(nil);
+    } else if ([@"startSpeechRecognize" isEqualToString:method]) {
+        self.enableSpeechRecognize = YES;
+        result(nil);
+    } else if ([@"stopSpeechRecognize" isEqualToString:method]) {
+        self.enableSpeechRecognize = NO;
+        result(nil);
     } else {
         result(FlutterMethodNotImplemented);
     }
@@ -855,6 +881,11 @@
 }
 
 - (void)rtcEngine:(AgoraRtcEngineKit *_Nonnull)engine didJoinChannel:(NSString *_Nonnull)channel withUid:(NSUInteger)uid elapsed:(NSInteger)elapsed {
+    if (self.enableExternalAudio == YES) {
+        [self.agoraRtcEngine enableExternalAudioSourceWithSampleRate:48000 channelsPerFrame:1];
+        [self.agoraRtcEngine setEnableSpeakerphone:true];
+        [self.exAudio startWork];
+    }
     [self sendEvent:@"onJoinChannelSuccess" params:@{@"channel": channel, @"uid": @(uid), @"elapsed": @(elapsed)}];
 }
 
@@ -1093,6 +1124,15 @@
 - (void)rtcEngine:(AgoraRtcEngineKit *_Nonnull)engine didReceiveChannelMediaRelayEvent:(AgoraChannelMediaRelayEvent)event {
     [self sendEvent:@"onReceivedChannelMediaRelayEvent" params:@{
             @"event": @(event)
+    }];
+}
+
+- (void)externalAudio:(ExternalAudio *)externalAudio didCaptureData:(unsigned char *)data bytesLength:(int)bytesLength {
+    if (self.enableSpeechRecognize == NO) return;
+    NSData* audioData = [NSData dataWithBytes:(const void *)data length:sizeof(unsigned char)*bytesLength];
+    FlutterStandardTypedData* standardTypedData = [FlutterStandardTypedData typedDataWithBytes:(NSData *)audioData];
+    [self sendEvent:@"onExternalAudioDataReceived" params:@{
+        @"audioData": standardTypedData
     }];
 }
 
