@@ -9,6 +9,7 @@ import android.graphics.Rect;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
+import android.util.Log;
 import android.view.SurfaceView;
 
 import java.util.ArrayList;
@@ -54,10 +55,12 @@ public class AgoraRtcEnginePlugin implements MethodCallHandler, EventChannel.Str
     private HashMap<String, SurfaceView> mRendererViews;
     private Handler mEventHandler = new Handler(Looper.getMainLooper());
     private EventChannel.EventSink sink;
+    private Activity mActivity;
+
     private boolean enableSpeechRecognize = false;
     private boolean enableExternalAudio = false;
-    private Activity mActivity;
     private String mSpeechApiKey;
+    private String mSpeechLanguageCode = "en-US";
 
     void addView(SurfaceView view, int id) {
         mRendererViews.put("" + id, view);
@@ -79,7 +82,7 @@ public class AgoraRtcEnginePlugin implements MethodCallHandler, EventChannel.Str
         @Override
         public void onVoiceStart(int sampleRate) {
             if (mSpeechService != null) {
-                mSpeechService.startRecognizing(sampleRate);
+                mSpeechService.startRecognizing(sampleRate, mSpeechLanguageCode);
             }
         }
 
@@ -1186,6 +1189,15 @@ public class AgoraRtcEnginePlugin implements MethodCallHandler, EventChannel.Str
 
             case "setSpeechApiKey": {
                 mSpeechApiKey = call.argument("apiKey");
+                result.success(true);
+            }
+            break;
+
+            case "setSpeechLanguage": {
+                mSpeechLanguageCode = call.argument("languageCode");
+                if (mSpeechService != null) {
+                    mSpeechService.finishRecognizing();
+                }
                 result.success(true);
             }
             break;
