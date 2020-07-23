@@ -122,7 +122,7 @@ static OSStatus renderCallBack(void *inRefCon,
     sessionOption |= AVAudioSessionCategoryOptionAllowBluetooth;
     
     [audioSession setCategory:AVAudioSessionCategoryPlayAndRecord withOptions:sessionOption error:nil];
-    [audioSession setMode:AVAudioSessionModeDefault error:nil];
+    [audioSession setMode:AVAudioSessionModeVideoChat error:nil];
     [audioSession setPreferredIOBufferDuration:preferredIOBufferDuration error:nil];
     NSError *error;
     BOOL success = [audioSession setActive:YES error:&error];
