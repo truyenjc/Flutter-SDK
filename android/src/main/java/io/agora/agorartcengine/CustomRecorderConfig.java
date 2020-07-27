@@ -4,7 +4,7 @@ import android.media.AudioFormat;
 import android.media.AudioRecord;
 
 public class CustomRecorderConfig {
-    private static final int DEFAULT_SAMPLE_RATE = 16000;
+    private static final int DEFAULT_SAMPLE_RATE = 48000;
 
     private int mSampleRate;
     private int mChannel;

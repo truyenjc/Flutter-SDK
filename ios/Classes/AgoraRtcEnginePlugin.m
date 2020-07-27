@@ -839,6 +839,8 @@
     } else if ([@"stopSpeechRecognize" isEqualToString:method]) {
         self.enableSpeechRecognize = NO;
         result(nil);
+    } else if ([@"setSpeechLanguage" isEqualToString:method]) {
+        result(nil);
     } else {
         result(FlutterMethodNotImplemented);
     }

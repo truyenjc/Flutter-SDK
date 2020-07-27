@@ -1250,6 +1250,11 @@ class AgoraRtcEngine {
     await _channel.invokeMethod('setSpeechApiKey', {'apiKey': apiKey});
   }
 
+  static Future<void> setSpeechLanguage(String languageCode) async {
+    await _channel
+        .invokeMethod('setSpeechLanguage', {'languageCode': languageCode});
+  }
+
   static Future<void> startSpeechRecognize() async {
     await _channel.invokeMethod('startSpeechRecognize');
   }
