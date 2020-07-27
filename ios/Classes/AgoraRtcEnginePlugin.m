@@ -885,7 +885,7 @@
 - (void)rtcEngine:(AgoraRtcEngineKit *_Nonnull)engine didJoinChannel:(NSString *_Nonnull)channel withUid:(NSUInteger)uid elapsed:(NSInteger)elapsed {
     if (self.enableExternalAudio == YES) {
         [self.agoraRtcEngine enableExternalAudioSourceWithSampleRate:48000 channelsPerFrame:1];
-        [self.agoraRtcEngine setEnableSpeakerphone:true];
+        [self.agoraRtcEngine setEnableSpeakerphone:YES];
         [self.exAudio startWork];
     }
     [self sendEvent:@"onJoinChannelSuccess" params:@{@"channel": channel, @"uid": @(uid), @"elapsed": @(elapsed)}];
