@@ -35,6 +35,7 @@
 @property (nonatomic, assign) int channels;
 @property (nonatomic, assign) BOOL enableSpeechRecognize;
 @property (nonatomic, assign) BOOL enableExternalAudio;
+@property (nonatomic, assign) BOOL enableMicrophone;
 @end
 
 @implementation AgoraRtcEnginePlugin
@@ -158,7 +159,6 @@
     } else if ([@"leaveChannel" isEqualToString:method]) {
         if (self.enableExternalAudio == YES) {
             [self.exAudio stopWork];
-            self.enableSpeechRecognize = NO;
         }
         BOOL success = (0 == [self.agoraRtcEngine leaveChannel:nil]);
         result([NSNumber numberWithBool:success]);
@@ -252,6 +252,7 @@
         result(nil);
     } else if ([@"muteLocalAudioStream" isEqualToString:method]) {
         BOOL muted = [self boolFromArguments:params key:@"muted"];
+        self.enableMicrophone = muted == YES ? NO : YES;
         [self.agoraRtcEngine muteLocalAudioStream:muted];
         result(nil);
     } else if ([@"muteRemoteAudioStream" isEqualToString:method]) {
@@ -884,6 +885,8 @@
 
 - (void)rtcEngine:(AgoraRtcEngineKit *_Nonnull)engine didJoinChannel:(NSString *_Nonnull)channel withUid:(NSUInteger)uid elapsed:(NSInteger)elapsed {
     if (self.enableExternalAudio == YES) {
+        self.enableSpeechRecognize = NO;
+        self.enableMicrophone = YES;
         [self.agoraRtcEngine enableExternalAudioSourceWithSampleRate:48000 channelsPerFrame:1];
         [self.agoraRtcEngine setEnableSpeakerphone:YES];
         [self.exAudio startWork];
@@ -1130,7 +1133,7 @@
 }
 
 - (void)externalAudio:(ExternalAudio *)externalAudio didCaptureData:(unsigned char *)data bytesLength:(int)bytesLength {
-    if (self.enableSpeechRecognize == NO) return;
+    if (self.enableSpeechRecognize == NO || self.enableMicrophone == NO) return;
     NSData* audioData = [NSData dataWithBytes:(const void *)data length:sizeof(unsigned char)*bytesLength];
     FlutterStandardTypedData* standardTypedData = [FlutterStandardTypedData typedDataWithBytes:(NSData *)audioData];
     [self sendEvent:@"onExternalAudioDataReceived" params:@{
