@@ -9,7 +9,6 @@ import android.graphics.Rect;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
-import android.util.Log;
 import android.view.SurfaceView;
 
 import java.util.ArrayList;
@@ -59,6 +58,7 @@ public class AgoraRtcEnginePlugin implements MethodCallHandler, EventChannel.Str
 
     private boolean enableSpeechRecognize = false;
     private boolean enableExternalAudio = false;
+    private boolean enableMicrophone = true;
     private String mSpeechApiKey;
     private String mSpeechLanguageCode = "en-US";
 
@@ -88,7 +88,7 @@ public class AgoraRtcEnginePlugin implements MethodCallHandler, EventChannel.Str
 
         @Override
         public void onVoice(byte[] data, int size) {
-            if (mSpeechService != null && enableSpeechRecognize) {
+            if (mSpeechService != null && enableSpeechRecognize && enableMicrophone) {
                 mSpeechService.recognize(data, size);
             }
         }
@@ -353,6 +353,12 @@ public class AgoraRtcEnginePlugin implements MethodCallHandler, EventChannel.Str
             break;
             case "muteLocalAudioStream": {
                 boolean muted = call.argument("muted");
+                if (enableExternalAudio) {
+                    enableMicrophone = !muted;
+                    if (mSpeechService != null && enableSpeechRecognize && muted) {
+                        mSpeechService.finishRecognizing();
+                    }
+                }
                 mRtcEngine.muteLocalAudioStream(muted);
                 result.success(null);
             }
@@ -1265,6 +1271,7 @@ public class AgoraRtcEnginePlugin implements MethodCallHandler, EventChannel.Str
             super.onJoinChannelSuccess(channel, uid, elapsed);
             if (enableExternalAudio) {
                 enableSpeechRecognize = false;
+                enableMicrophone = true;
                 bindExternalAudioService();
             }
             HashMap<String, Object> map = new HashMap<>();

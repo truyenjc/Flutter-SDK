@@ -13,6 +13,7 @@ class MyApp extends StatefulWidget {
 
 class _MyAppState extends State<MyApp> {
   bool _isInChannel = false;
+  bool _isSpeakerEnable = true;
   final _infoStrings = <String>[];
 
   static final _sessions = List<VideoSession>();
@@ -55,6 +56,11 @@ class _MyAppState extends State<MyApp> {
                     style: textStyle),
                 onPressed: _toggleChannel,
               ),
+              OutlineButton(
+                child: Text(_isSpeakerEnable ? 'Disable speaker' : 'Enable speaker',
+                    style: textStyle),
+                onPressed: _toggleSpeaker,
+              ),
               Container(height: 100, child: _voiceDropdown()),
               Expanded(child: Container(child: _buildInfoList())),
             ],
@@ -90,11 +96,12 @@ class _MyAppState extends State<MyApp> {
 
   Future<void> _initAgoraRtcEngine() async {
     AgoraRtcEngine.create('YOUR APP ID');
-
+    AgoraRtcEngine.setSpeechApiKey('apiKey');
     AgoraRtcEngine.enableVideo();
     AgoraRtcEngine.enableAudio();
     // AgoraRtcEngine.setParameters('{\"che.video.lowBitRateStreamParameter\":{\"width\":320,\"height\":180,\"frameRate\":15,\"bitRate\":140}}');
     AgoraRtcEngine.setChannelProfile(ChannelProfile.Communication);
+    AgoraRtcEngine.enableExternalAudio();
 
     VideoEncoderConfiguration config = VideoEncoderConfiguration();
     config.orientationMode = VideoOutputOrientationMode.FixedPortrait;
@@ -205,6 +212,13 @@ class _MyAppState extends State<MyApp> {
       },
       itemCount: _infoStrings.length,
     );
+  }
+
+  _toggleSpeaker() {
+    setState(() {
+      _isSpeakerEnable = !_isSpeakerEnable;
+      AgoraRtcEngine.setEnableSpeakerphone(_isSpeakerEnable);
+    });
   }
 }
 
