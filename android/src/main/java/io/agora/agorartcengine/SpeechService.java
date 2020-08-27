@@ -103,6 +103,7 @@ public class SpeechService extends Service {
 
         @Override
         public void onError(Throwable t) {
+            finishRecognizing();
             Log.e(TAG, "Error calling the API.", t);
         }
 
@@ -134,6 +135,7 @@ public class SpeechService extends Service {
 
         @Override
         public void onError(Throwable t) {
+            finishRecognizing();
             Log.e(TAG, "Error calling the API.", t);
         }
 
@@ -194,7 +196,6 @@ public class SpeechService extends Service {
             return;
         }
         // Configure the API
-        Log.d("abc", getDefaultLanguageCode());
         mRequestObserver = mApi.streamingRecognize(mResponseObserver);
         mRequestObserver.onNext(StreamingRecognizeRequest.newBuilder()
                 .setStreamingConfig(StreamingRecognitionConfig.newBuilder()
