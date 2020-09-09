@@ -887,6 +887,7 @@
     if (self.enableExternalAudio == YES) {
         self.enableSpeechRecognize = NO;
         self.enableMicrophone = YES;
+        [self.agoraRtcEngine enableExternalAudioSourceWithSampleRate:48000 channelsPerFrame:1];
         [self.agoraRtcEngine setEnableSpeakerphone:YES];
         [self.exAudio startWork];
     }
