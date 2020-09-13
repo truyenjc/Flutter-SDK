@@ -417,6 +417,9 @@ class AgoraRtcEngine {
   /// Occurs when received speech recognized
   static void Function(Uint8List audioData) onExternalAudioDataReceived;
 
+  /// Occurs when hearing voice
+  static void Function() onHearingVoice;
+
   // Core Methods
   /// Creates an RtcEngine instance.
   ///
@@ -1599,7 +1602,11 @@ class AgoraRtcEngine {
           onExternalAudioDataReceived(map["audioData"] as Uint8List);
         }
         break;
-
+      case 'onHearingVoice':
+        if (onHearingVoice != null) {
+          onHearingVoice();
+        }
+        break;
       default:
     }
   }
