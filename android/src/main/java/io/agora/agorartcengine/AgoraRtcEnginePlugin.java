@@ -91,7 +91,7 @@ public class AgoraRtcEnginePlugin implements MethodCallHandler, EventChannel.Str
             if (mSpeechService != null && enableSpeechRecognize && enableMicrophone) {
                 mSpeechService.recognize(data, size);
             }
-            sendEvent("onHearingVoice", null);
+            sendEvent("onHearingVoice", new HashMap<>());
         }
 
         @Override
