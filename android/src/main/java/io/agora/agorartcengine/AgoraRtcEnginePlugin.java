@@ -91,13 +91,15 @@ public class AgoraRtcEnginePlugin implements MethodCallHandler, EventChannel.Str
             if (mSpeechService != null && enableSpeechRecognize && enableMicrophone) {
                 mSpeechService.recognize(data, size);
             }
-            sendEvent("onHearingVoice", new HashMap<>());
         }
 
         @Override
         public void onVoiceEnd() {
             if (mSpeechService != null) {
                 mSpeechService.finishRecognizing();
+            }
+            if (!enableMicrophone) {
+                sendEvent("onHearingVoice", new HashMap<>());
             }
         }
 
@@ -1179,15 +1181,10 @@ public class AgoraRtcEnginePlugin implements MethodCallHandler, EventChannel.Str
             }
             break;
 
-            case "startSpeechRecognize": {
-                enableSpeechRecognize = true;
-                result.success(true);
-            }
-            break;
-
-            case "stopSpeechRecognize": {
-                enableSpeechRecognize = false;
-                if (mSpeechService != null) {
+            case "enableSpeechRecognize": {
+                boolean enable = call.argument("enable");
+                enableSpeechRecognize = enable;
+                if (!enable && mSpeechService != null) {
                     mSpeechService.finishRecognizing();
                 }
                 result.success(true);
