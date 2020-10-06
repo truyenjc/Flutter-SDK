@@ -95,7 +95,6 @@ public:
             if (isExternalCapture == false) return true;
             
             int readBytes = sampleRate / 100 * channels * audioFrame.bytesPerSample;
-            
             if (availableBytes < readBytes) {
                 return false;
             }
@@ -151,7 +150,7 @@ public:
                 memcpy(tmp, byteBuffer_play + readIndex_play, readBytes);
                 readIndex_play += readBytes;
             }
-            
+             
             availableBytes_play -= readBytes;
             
             if (channels_play == 1) {
@@ -159,7 +158,6 @@ public:
             }
             
             [AudioWriteToFile writeToFileWithData:data length:readBytes];
-            
             return readBytes;
         }
         

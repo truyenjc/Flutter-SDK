@@ -35,7 +35,6 @@
 @property (nonatomic, assign) int channels;
 @property (nonatomic, assign) BOOL enableSpeechRecognize;
 @property (nonatomic, assign) BOOL enableExternalAudio;
-@property (nonatomic, assign) BOOL enableMicrophone;
 @end
 
 @implementation AgoraRtcEnginePlugin
@@ -252,7 +251,6 @@
         result(nil);
     } else if ([@"muteLocalAudioStream" isEqualToString:method]) {
         BOOL muted = [self boolFromArguments:params key:@"muted"];
-        self.enableMicrophone = muted == YES ? NO : YES;
         [self.agoraRtcEngine muteLocalAudioStream:muted];
         result(nil);
     } else if ([@"muteRemoteAudioStream" isEqualToString:method]) {
@@ -834,11 +832,9 @@
         result(res);
     } else if ([@"setSpeechApiKey" isEqualToString:method]) {
         result(nil);
-    } else if ([@"startSpeechRecognize" isEqualToString:method]) {
-        self.enableSpeechRecognize = YES;
-        result(nil);
-    } else if ([@"stopSpeechRecognize" isEqualToString:method]) {
-        self.enableSpeechRecognize = NO;
+    } else if ([@"enableSpeechRecognize" isEqualToString:method]) {
+        BOOL enable = [self boolFromArguments:params key:@"enable"];
+        self.enableSpeechRecognize = enable;
         result(nil);
     } else if ([@"setSpeechLanguage" isEqualToString:method]) {
         result(nil);
@@ -886,7 +882,6 @@
 - (void)rtcEngine:(AgoraRtcEngineKit *_Nonnull)engine didJoinChannel:(NSString *_Nonnull)channel withUid:(NSUInteger)uid elapsed:(NSInteger)elapsed {
     if (self.enableExternalAudio == YES) {
         self.enableSpeechRecognize = NO;
-        self.enableMicrophone = YES;
         [self.agoraRtcEngine enableExternalAudioSourceWithSampleRate:48000 channelsPerFrame:1];
         [self.agoraRtcEngine setEnableSpeakerphone:YES];
         [self.exAudio startWork];
@@ -1133,7 +1128,7 @@
 }
 
 - (void)externalAudio:(ExternalAudio *)externalAudio didCaptureData:(unsigned char *)data bytesLength:(int)bytesLength {
-    if (self.enableSpeechRecognize == NO || self.enableMicrophone == NO) return;
+    if (self.enableSpeechRecognize == NO) return;
     NSData* audioData = [NSData dataWithBytes:(const void *)data length:sizeof(unsigned char)*bytesLength];
     FlutterStandardTypedData* standardTypedData = [FlutterStandardTypedData typedDataWithBytes:(NSData *)audioData];
     [self sendEvent:@"onExternalAudioDataReceived" params:@{

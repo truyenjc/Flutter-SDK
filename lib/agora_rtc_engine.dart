@@ -1258,12 +1258,8 @@ class AgoraRtcEngine {
         .invokeMethod('setSpeechLanguage', {'languageCode': languageCode});
   }
 
-  static Future<void> startSpeechRecognize() async {
-    await _channel.invokeMethod('startSpeechRecognize');
-  }
-
-  static Future<void> stopSpeechRecognize() async {
-    await _channel.invokeMethod('stopSpeechRecognize');
+  static Future<void> enableSpeechRecognize(bool enable) async {
+    await _channel.invokeMethod('enableSpeechRecognize', {"enable": enable});
   }
 
   static Future<void> enableExternalAudio() async {
@@ -1599,7 +1595,8 @@ class AgoraRtcEngine {
       case 'onExternalAudioDataReceived':
         // only for iOS platform
         if (onExternalAudioDataReceived != null) {
-          onExternalAudioDataReceived(map["audioData"] as Uint8List);
+          final audioData = map["audioData"] as Uint8List;
+          onExternalAudioDataReceived(audioData);
         }
         break;
       case 'onHearingVoice':
