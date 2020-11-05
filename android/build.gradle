@@ -20,10 +20,9 @@ rootProject.allprojects {
 }
 
 apply plugin: 'com.android.library'
-apply plugin: 'com.google.protobuf'
 
 ext {
-    grpcVersion = '1.4.0'
+    grpcVersion = '1.27.0'
 }
 
 android {
@@ -45,30 +44,11 @@ android {
     lintOptions {
         disable 'InvalidPackage'
     }
-}
 
-protobuf {
-    protoc {
-        artifact = 'com.google.protobuf:protoc:3.3.0'
-    }
-    plugins {
-        javalite {
-            artifact = "com.google.protobuf:protoc-gen-javalite:3.0.0"
-        }
-        grpc {
-            artifact = "io.grpc:protoc-gen-grpc-java:${grpcVersion}"
-        }
-    }
-    generateProtoTasks {
-        all().each { task ->
-            task.plugins {
-                javalite {}
-                grpc {
-                    // Options added to --grpc_out
-                    option 'lite'
-                }
-            }
-        }
+    packagingOptions {
+        exclude 'META-INF/LICENSE'
+        exclude 'META-INF/DEPENDENCIES'
+        exclude 'META-INF/INDEX.LIST'
     }
 }
 
@@ -78,12 +58,16 @@ dependencies {
 
     // gRPC
     implementation "io.grpc:grpc-okhttp:$grpcVersion"
-    implementation "io.grpc:grpc-protobuf-lite:$grpcVersion"
-    implementation "io.grpc:grpc-stub:$grpcVersion"
+    implementation group: 'com.google.api.grpc', name: 'grpc-google-cloud-speech-v1', version: '1.15.0'
     implementation 'javax.annotation:javax.annotation-api:1.2'
-    protobuf 'com.google.protobuf:protobuf-java:3.11.4'
 
     // OAuth2 for Google API
-    implementation('com.google.auth:google-auth-library-oauth2-http:0.7.0') {
-    }
+    implementation 'com.google.auth:google-auth-library-oauth2-http:0.7.0'
+}
+
+configurations.all {
+    exclude group: 'com.google.protobuf', module: 'protobuf-javalite'
+    exclude group: 'com.google.protobuf', module: 'protobuf-java'
+    exclude group: 'com.google.firebase', module: 'protolite-well-known-types'
+    exclude group: 'com.google.api.grpc', module: 'proto-google-common-protos'
 }

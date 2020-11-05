@@ -173,7 +173,9 @@ public class SpeechService extends Service {
     @Override
     public IBinder onBind(Intent intent) {
         String apiKey = intent.getStringExtra(Constants.SPEECH_API_KEY_EXTRA);
-        initialize(apiKey);
+        String packageName = getApplicationContext().getPackageName();
+        String sha = SignatureUtils.getSignature(getPackageManager(), packageName);
+        initialize(getApplicationContext().getPackageName(), sha, apiKey);
         return mBinder;
     }
 
@@ -262,15 +264,19 @@ public class SpeechService extends Service {
         }
     }
 
-    private void initialize(String apiKey) {
-        Metadata.Key<String> API_KEY = Metadata.Key.of("x-goog-api-key", Metadata.ASCII_STRING_MARSHALLER);
-        Metadata apiKeyMetadata = new Metadata();
-        apiKeyMetadata.put(API_KEY, apiKey);
+    private void initialize(String packageName, String sha, String apiKey) {
+        Metadata metadata = new Metadata();
+        Metadata.Key<String> packageNameKey = Metadata.Key.of("X-Android-Package", Metadata.ASCII_STRING_MARSHALLER);
+        metadata.put(packageNameKey, packageName);
+        Metadata.Key<String> shaKey = Metadata.Key.of("X-Android-Cert", Metadata.ASCII_STRING_MARSHALLER);
+        metadata.put(shaKey, sha);
+        Metadata.Key<String> speechApiKey = Metadata.Key.of("x-goog-api-key", Metadata.ASCII_STRING_MARSHALLER);
+        metadata.put(speechApiKey, apiKey);
 
         final ManagedChannel channel = new OkHttpChannelProvider()
                 .builderForAddress(HOSTNAME, PORT)
                 .nameResolverFactory(new DnsNameResolverProvider())
-                .intercept(MetadataUtils.newAttachHeadersInterceptor(apiKeyMetadata))
+                .intercept(MetadataUtils.newAttachHeadersInterceptor(metadata))
                 .build();
         mApi = SpeechGrpc.newStub(channel);
     }
