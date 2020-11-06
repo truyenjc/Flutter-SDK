@@ -48,6 +48,16 @@ android {
             signingConfig signingConfigs.debug
         }
     }
+<<<<<<< Updated upstream
+=======
+
+    packagingOptions {
+        exclude 'META-INF/LICENSE'
+        exclude 'META-INF/DEPENDENCIES'
+        exclude 'META-INF/INDEX.LIST'
+        exclude 'AndroidManifest.xml'
+    }
+>>>>>>> Stashed changes
 }
 
 flutter {
