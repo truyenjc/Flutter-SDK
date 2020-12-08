@@ -1,4 +1,4 @@
-package io.agora.agorartcengine;
+package io.agora.agorartcengine.external.audio;
 
 import android.app.Notification;
 import android.app.NotificationChannel;
@@ -14,6 +14,8 @@ import android.util.Log;
 
 import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
+
+import io.agora.agorartcengine.AgoraRtcEnginePlugin;
 
 public class CustomRecorderService extends Service {
     private static final String TAG = CustomRecorderService.class.getSimpleName();

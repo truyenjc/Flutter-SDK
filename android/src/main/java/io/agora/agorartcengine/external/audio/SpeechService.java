@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package io.agora.agorartcengine;
+package io.agora.agorartcengine.external.audio;
 
 import android.app.Service;
 import android.content.Intent;
@@ -47,6 +47,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.TimeUnit;
 
+import io.agora.agorartcengine.external.Constant;
 import io.grpc.ManagedChannel;
 import io.grpc.Metadata;
 import io.grpc.internal.DnsNameResolverProvider;
@@ -172,7 +173,7 @@ public class SpeechService extends Service {
     @Nullable
     @Override
     public IBinder onBind(Intent intent) {
-        String apiKey = intent.getStringExtra(Constants.SPEECH_API_KEY_EXTRA);
+        String apiKey = intent.getStringExtra(Constant.SPEECH_API_KEY_EXTRA);
         String packageName = getApplicationContext().getPackageName();
         String sha = SignatureUtils.getSignature(getPackageManager(), packageName);
         initialize(getApplicationContext().getPackageName(), sha, apiKey);

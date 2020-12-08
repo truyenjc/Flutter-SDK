@@ -420,6 +420,9 @@ class AgoraRtcEngine {
   /// Occurs when hearing voice
   static void Function() onHearingVoice;
 
+  /// Occurs when user ignore share screen
+  static void Function() onShareScreenFailed;
+
   // Core Methods
   /// Creates an RtcEngine instance.
   ///
@@ -1266,6 +1269,14 @@ class AgoraRtcEngine {
     await _channel.invokeMethod('enableExternalAudio');
   }
 
+  static Future<void> startShareScreen() async {
+    await _channel.invokeMethod('startShareScreen');
+  }
+
+  static Future<void> stopShareScreen() async {
+    await _channel.invokeMethod('stopShareScreen');
+  }
+
   static void _addEventChannelHandler() async {
     _sink = _eventChannel
         .receiveBroadcastStream()
@@ -1602,6 +1613,11 @@ class AgoraRtcEngine {
       case 'onHearingVoice':
         if (onHearingVoice != null) {
           onHearingVoice();
+        }
+        break;
+      case 'onShareScreenFailed':
+        if (onShareScreenFailed != null) {
+          onShareScreenFailed();
         }
         break;
       default:

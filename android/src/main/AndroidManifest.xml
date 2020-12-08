@@ -12,7 +12,10 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
 
     <application>
-        <service android:name=".CustomRecorderService" />
-        <service android:name=".SpeechService" />
+        <service android:name=".external.audio.CustomRecorderService" />
+        <service android:name=".external.audio.SpeechService" />
+        <service android:name=".external.video.ExternalVideoInputService"
+            android:exported="false"
+            android:foregroundServiceType="mediaProjection"/>
     </application>
 </manifest>

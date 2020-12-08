@@ -6,16 +6,27 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
 import android.graphics.Rect;
+import android.media.projection.MediaProjectionManager;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
+import android.util.DisplayMetrics;
+import android.util.Log;
 import android.view.SurfaceView;
+
+import androidx.annotation.NonNull;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import io.agora.agorartcengine.external.Constant;
+import io.agora.agorartcengine.external.audio.CustomRecorderConfig;
+import io.agora.agorartcengine.external.audio.CustomRecorderService;
+import io.agora.agorartcengine.external.audio.SpeechService;
+import io.agora.agorartcengine.external.video.ExternalVideoInputManager;
+import io.agora.agorartcengine.external.video.ExternalVideoInputService;
 import io.agora.rtc.IRtcEngineEventHandler;
 import io.agora.rtc.RtcEngine;
 import io.agora.rtc.internal.LastmileProbeConfig;
@@ -29,20 +40,24 @@ import io.agora.rtc.video.ChannelMediaRelayConfiguration;
 import io.agora.rtc.video.VideoCanvas;
 import io.agora.rtc.video.VideoEncoderConfiguration;
 import io.agora.rtc.video.WatermarkOptions;
+import io.flutter.embedding.engine.plugins.FlutterPlugin;
+import io.flutter.embedding.engine.plugins.activity.ActivityAware;
+import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding;
 import io.flutter.plugin.common.EventChannel;
 import io.flutter.plugin.common.MethodCall;
 import io.flutter.plugin.common.MethodChannel;
 import io.flutter.plugin.common.MethodChannel.MethodCallHandler;
 import io.flutter.plugin.common.MethodChannel.Result;
-import io.flutter.plugin.common.PluginRegistry.Registrar;
+import io.flutter.plugin.common.PluginRegistry;
 import io.flutter.plugin.common.StandardMessageCodec;
 
+import static android.app.Activity.RESULT_OK;
 import static android.content.Context.BIND_AUTO_CREATE;
 
 /**
  * AgoraRtcEnginePlugin
  */
-public class AgoraRtcEnginePlugin implements MethodCallHandler, EventChannel.StreamHandler {
+public class AgoraRtcEnginePlugin implements MethodCallHandler, EventChannel.StreamHandler, FlutterPlugin, ActivityAware, PluginRegistry.ActivityResultListener {
 
     public static RtcEngine getRtcEngine() {
         return mRtcEngine;
@@ -50,11 +65,11 @@ public class AgoraRtcEnginePlugin implements MethodCallHandler, EventChannel.Str
 
     private static RtcEngine mRtcEngine;
 
-    private final Registrar mRegistrar;
     private HashMap<String, SurfaceView> mRendererViews;
     private Handler mEventHandler = new Handler(Looper.getMainLooper());
     private EventChannel.EventSink sink;
     private Activity mActivity;
+    private Context mContext;
 
     private boolean enableSpeechRecognize = false;
     private boolean enableExternalAudio = false;
@@ -76,6 +91,7 @@ public class AgoraRtcEnginePlugin implements MethodCallHandler, EventChannel.Str
 
     private SpeechService mSpeechService;
     private CustomRecorderService mRecorderService;
+    private ExternalVideoInputService mExternalVideoInputService;
 
     private final CustomRecorderService.Callback mVoiceCallback = new CustomRecorderService.Callback() {
 
@@ -137,6 +153,19 @@ public class AgoraRtcEnginePlugin implements MethodCallHandler, EventChannel.Str
 
     };
 
+    private final ServiceConnection mVideoInputServiceConnection = new ServiceConnection() {
+
+        @Override
+        public void onServiceConnected(ComponentName componentName, IBinder binder) {
+            mExternalVideoInputService = ExternalVideoInputService.from(binder);
+        }
+
+        @Override
+        public void onServiceDisconnected(ComponentName componentName) {
+            mExternalVideoInputService = null;
+        }
+    };
+
     private final SpeechService.Listener mSpeechServiceListener = new SpeechService.Listener() {
         @Override
         public void onSpeechRecognized(final String text, final boolean isFinal) {
@@ -149,32 +178,8 @@ public class AgoraRtcEnginePlugin implements MethodCallHandler, EventChannel.Str
         }
     };
 
-    /**
-     * Plugin registration.
-     */
-    public static void registerWith(Registrar registrar) {
-        final MethodChannel channel = new MethodChannel(registrar.messenger(), "agora_rtc_engine");
-
-        final EventChannel eventChannel = new EventChannel(registrar.messenger(), "agora_rtc_engine_event_channel");
-
-        AgoraRtcEnginePlugin plugin = new AgoraRtcEnginePlugin(registrar);
-        channel.setMethodCallHandler(plugin);
-        eventChannel.setStreamHandler(plugin);
-
-        AgoraRenderViewFactory fac = new AgoraRenderViewFactory(StandardMessageCodec.INSTANCE,
-                plugin);
-        registrar.platformViewRegistry().registerViewFactory("AgoraRendererView", fac);
-    }
-
-    private AgoraRtcEnginePlugin(Registrar registrar) {
-        this.mRegistrar = registrar;
-        this.mActivity = registrar.activity();
-        this.sink = null;
-        this.mRendererViews = new HashMap<>();
-    }
-
     private Context getActiveContext() {
-        return (mRegistrar.activity() != null) ? mRegistrar.activity() : mRegistrar.context();
+        return mActivity != null ? mActivity : mContext;
     }
 
     private AgoraImage createAgoraImage(Map<String, Object> options) {
@@ -241,6 +246,7 @@ public class AgoraRtcEnginePlugin implements MethodCallHandler, EventChannel.Str
                 if (enableExternalAudio) {
                     unbindExternalAudioService();
                 }
+                stopShareScreen();
                 result.success(mRtcEngine.leaveChannel() >= 0);
             }
             break;
@@ -325,6 +331,7 @@ public class AgoraRtcEnginePlugin implements MethodCallHandler, EventChannel.Str
                 int profile = call.argument("profile");
                 int scenario = call.argument("scenario");
                 mRtcEngine.setAudioProfile(profile, scenario);
+                mRtcEngine.setExternalVideoSource(true, true, false);
                 result.success(null);
             }
             break;
@@ -1206,6 +1213,21 @@ public class AgoraRtcEnginePlugin implements MethodCallHandler, EventChannel.Str
             }
             break;
 
+            case "startShareScreen": {
+                bindExternalVideoService();
+                MediaProjectionManager mediaProjectionManager = (MediaProjectionManager)
+                        mContext.getSystemService(Context.MEDIA_PROJECTION_SERVICE);
+                Intent intent = mediaProjectionManager.createScreenCaptureIntent();
+                mActivity.startActivityForResult(intent, Constant.MEDIA_PROJECTION_REQUEST_CODE);
+                result.success(true);
+            }
+            break;
+
+            case "stopShareScreen": {
+                stopShareScreen();
+            }
+            break;
+
             default:
                 result.notImplemented();
         }
@@ -1222,16 +1244,32 @@ public class AgoraRtcEnginePlugin implements MethodCallHandler, EventChannel.Str
         Intent customRecorderIntent = new Intent(mActivity, CustomRecorderService.class);
         mActivity.bindService(customRecorderIntent, mAudioRecorderServiceConnection, BIND_AUTO_CREATE);
         Intent speechIntent = new Intent(mActivity, SpeechService.class);
-        speechIntent.putExtra(Constants.SPEECH_API_KEY_EXTRA, mSpeechApiKey);
+        speechIntent.putExtra(Constant.SPEECH_API_KEY_EXTRA, mSpeechApiKey);
         mActivity.bindService(speechIntent, mSpeechServiceConnection, BIND_AUTO_CREATE);
     }
 
     private void unbindExternalAudioService() {
         if (mSpeechService != null) {
             mSpeechService.finishRecognizing();
+            mActivity.unbindService(mSpeechServiceConnection);
+            mSpeechService = null;
         }
-        mActivity.unbindService(mAudioRecorderServiceConnection);
-        mActivity.unbindService(mSpeechServiceConnection);
+        if (mRecorderService != null) {
+            mActivity.unbindService(mAudioRecorderServiceConnection);
+            mRecorderService = null;
+        }
+    }
+
+    private void bindExternalVideoService() {
+        Intent intent = new Intent(mActivity, ExternalVideoInputService.class);
+        mActivity.bindService(intent, mVideoInputServiceConnection, BIND_AUTO_CREATE);
+    }
+
+    private void stopShareScreen() {
+        if (mExternalVideoInputService != null) {
+            mActivity.unbindService(mVideoInputServiceConnection);
+            mExternalVideoInputService = null;
+        }
     }
 
     private VideoEncoderConfiguration.ORIENTATION_MODE orientationFromValue(int value) {
@@ -1898,44 +1936,65 @@ public class AgoraRtcEnginePlugin implements MethodCallHandler, EventChannel.Str
         this.sink = null;
     }
 
-    private static class MethodResultWrapper implements MethodChannel.Result {
-        private MethodChannel.Result mResult;
-        private Handler mHandler;
+    @Override
+    public void onAttachedToEngine(@NonNull FlutterPluginBinding binding) {
+        final MethodChannel channel = new MethodChannel(binding.getBinaryMessenger(), "agora_rtc_engine");
+        final EventChannel eventChannel = new EventChannel(binding.getBinaryMessenger(), "agora_rtc_engine_event_channel");
+        channel.setMethodCallHandler(this);
+        eventChannel.setStreamHandler(this);
+        this.sink = null;
+        this.mRendererViews = new HashMap<>();
+        mContext = binding.getApplicationContext();
+        AgoraRenderViewFactory fac = new AgoraRenderViewFactory(StandardMessageCodec.INSTANCE, this);
+        binding.getPlatformViewRegistry().registerViewFactory("AgoraRendererView", fac);
+    }
 
-        MethodResultWrapper(MethodChannel.Result result, Handler handler) {
-            this.mResult = result;
-            this.mHandler = handler;
-        }
+    @Override
+    public void onDetachedFromEngine(@NonNull FlutterPluginBinding binding) {
+        // No-op
+    }
 
-        @Override
-        public void success(final Object result) {
-            mHandler.post(new Runnable() {
-                @Override
-                public void run() {
-                    mResult.success(result);
-                }
-            });
-        }
+    @Override
+    public void onAttachedToActivity(@NonNull ActivityPluginBinding binding) {
+        mActivity = binding.getActivity();
+        binding.addActivityResultListener(this);
+    }
 
-        @Override
-        public void error(final String errorCode, final String errorMessage,
-                          final Object errorDetails) {
-            mHandler.post(new Runnable() {
-                @Override
-                public void run() {
-                    mResult.error(errorCode, errorMessage, errorDetails);
-                }
-            });
-        }
+    @Override
+    public void onDetachedFromActivityForConfigChanges() {
+        // No-op
+    }
 
-        @Override
-        public void notImplemented() {
-            mHandler.post(new Runnable() {
-                @Override
-                public void run() {
-                    mResult.notImplemented();
-                }
-            });
+    @Override
+    public void onReattachedToActivityForConfigChanges(@NonNull ActivityPluginBinding binding) {
+        // No-op
+    }
+
+    @Override
+    public void onDetachedFromActivity() {
+        stopShareScreen();
+    }
+
+    @Override
+    public boolean onActivityResult(int requestCode, int resultCode, Intent data) {
+        if (requestCode == Constant.MEDIA_PROJECTION_REQUEST_CODE) {
+            if (resultCode == RESULT_OK) {
+                startShareScreen(data);
+            } else {
+                sendEvent("onShareScreenFailed", new HashMap<>());
+                stopShareScreen();
+            }
         }
+        return true;
+    }
+
+    private void startShareScreen(Intent data) {
+        DisplayMetrics metrics = new DisplayMetrics();
+        mActivity.getWindowManager().getDefaultDisplay().getMetrics(metrics);
+        data.putExtra(ExternalVideoInputManager.FLAG_SCREEN_WIDTH, metrics.widthPixels);
+        data.putExtra(ExternalVideoInputManager.FLAG_SCREEN_HEIGHT, metrics.heightPixels);
+        data.putExtra(ExternalVideoInputManager.FLAG_SCREEN_DPI, (int) metrics.density);
+        data.putExtra(ExternalVideoInputManager.FLAG_FRAME_RATE, 15);
+        mExternalVideoInputService.setExternalVideoInput(ExternalVideoInputManager.TYPE_SCREEN_SHARE, data);
     }
 }
