@@ -14,6 +14,7 @@ class MyApp extends StatefulWidget {
 class _MyAppState extends State<MyApp> {
   bool _isInChannel = false;
   bool _isSpeakerEnable = true;
+  bool _isShareScreenEnable = false;
   final _infoStrings = <String>[];
 
   static final _sessions = List<VideoSession>();
@@ -57,9 +58,16 @@ class _MyAppState extends State<MyApp> {
                 onPressed: _toggleChannel,
               ),
               OutlineButton(
-                child: Text(_isSpeakerEnable ? 'Disable speaker' : 'Enable speaker',
+                child: Text(
+                    _isSpeakerEnable ? 'Disable speaker' : 'Enable speaker',
                     style: textStyle),
                 onPressed: _toggleSpeaker,
+              ),
+              OutlineButton(
+                child: Text(
+                    _isShareScreenEnable ? 'Stop share screen' : 'Start share screen',
+                    style: textStyle),
+                onPressed: _startShareScreen,
               ),
               Container(height: 100, child: _voiceDropdown()),
               Expanded(child: Container(child: _buildInfoList())),
@@ -95,13 +103,14 @@ class _MyAppState extends State<MyApp> {
   }
 
   Future<void> _initAgoraRtcEngine() async {
-    AgoraRtcEngine.create('YOUR APP ID');
-    AgoraRtcEngine.setSpeechApiKey('apiKey');
+    AgoraRtcEngine.create('5a08ef07e2d94cf8a9df23d533917c74');
+    // AgoraRtcEngine.setSpeechApiKey('apiKey');
     AgoraRtcEngine.enableVideo();
     AgoraRtcEngine.enableAudio();
     // AgoraRtcEngine.setParameters('{\"che.video.lowBitRateStreamParameter\":{\"width\":320,\"height\":180,\"frameRate\":15,\"bitRate\":140}}');
-    AgoraRtcEngine.setChannelProfile(ChannelProfile.Communication);
-    AgoraRtcEngine.enableExternalAudio();
+    AgoraRtcEngine.setChannelProfile(ChannelProfile.LiveBroadcasting);
+    AgoraRtcEngine.setClientRole(ClientRole.Broadcaster);
+    // AgoraRtcEngine.enableExternalAudio();
 
     VideoEncoderConfiguration config = VideoEncoderConfiguration();
     config.orientationMode = VideoOutputOrientationMode.FixedPortrait;
@@ -215,9 +224,20 @@ class _MyAppState extends State<MyApp> {
   }
 
   _toggleSpeaker() {
+    AgoraRtcEngine.setEnableSpeakerphone(_isSpeakerEnable);
     setState(() {
       _isSpeakerEnable = !_isSpeakerEnable;
-      AgoraRtcEngine.setEnableSpeakerphone(_isSpeakerEnable);
+    });
+  }
+
+  _startShareScreen() {
+    if (!_isShareScreenEnable) {
+      AgoraRtcEngine.startShareScreen();
+    } else {
+      AgoraRtcEngine.stopShareScreen();
+    }
+    setState(() {
+      _isShareScreenEnable = !_isShareScreenEnable;
     });
   }
 }

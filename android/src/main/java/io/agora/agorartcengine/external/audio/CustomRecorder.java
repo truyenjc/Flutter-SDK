@@ -1,4 +1,4 @@
-package io.agora.agorartcengine;
+package io.agora.agorartcengine.external.audio;
 
 import android.media.AudioRecord;
 import android.media.MediaRecorder;
